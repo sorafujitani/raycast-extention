@@ -1,0 +1,16 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "memoli-todo",
+  "type": "module",
+  "title": "Memoli Todo",
+  "description": "Manage the Markdown checklist in your Memoli todo.md",
+  "icon": "icon.png",
+  "author": "fujitanisora0414",
+  "platforms": ["macOS"],
+  "categories": ["Productivity"],
+  "license": "MIT",
+  "commands": [{ "name": "todo", "title": "Memoli Todo", "description": "Add, edit and complete tasks in todo.md", "mode": "view" }],
+  "scripts": { "dev": "ray develop", "build": "ray build", "typecheck": "tsc --noEmit", "test": "node --experimental-strip-types --test tests/store.test.ts" },
+  "dependencies": { "@raycast/api": "^1.104.1" },
+  "devDependencies": { "@types/node": "^22.13.10", "@types/react": "^19.0.10", "typescript": "^5.8.2" }
+}
