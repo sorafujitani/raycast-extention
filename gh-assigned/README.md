@@ -17,28 +17,27 @@ gh assigned --json
 Skip login or extension installation if already configured. From this repository:
 
 ```sh
-cd gh-assigned
-npm ci
-npm run dev
+pnpm install --frozen-lockfile
+pnpm --filter gh-assigned dev
 ```
 
-Once the build is ready, launch **Search Pull Requests** under **GH Assigned** in Raycast. You can stop the development watcher with `ctrl-c`; the locally installed command remains available. Run `npm ci` and `npm run dev` again after updating the source.
+Once the build is ready, launch **Search Pull Requests** under **GH Assigned** in Raycast. You can stop the development watcher with `ctrl-c`; the locally installed command remains available. Run `pnpm install --frozen-lockfile` and `pnpm --filter gh-assigned dev` from the workspace root again after updating the source.
 
-Alternatively, use Raycast's **Import Extension** command and select this `gh-assigned/` directory after `npm ci`.
+Alternatively, use Raycast's **Import Extension** command and select this `gh-assigned/` directory after `pnpm install --frozen-lockfile`.
 
 ## Controls
 
-| Key | Action |
-| --- | --- |
-| Type | Filter the current list |
-| `⌘1` / `⌘2` / `⌘3` | Mine / Review requested / Assigned |
-| `⌘F` | Cycle search field: all / repo / title / author |
-| `⌘T` | Cycle match type: fuzzy / substring / exact |
-| `Enter` | Open the selected PR in your default browser |
-| `⌘⇧C` | Copy PR URL |
-| `⌘⇧N` | Copy PR number |
-| `⌘R` | Fetch fresh data |
-| `⌘K` | Open actions, search options, and setup help |
+| Key                | Action                                          |
+| ------------------ | ----------------------------------------------- |
+| Type               | Filter the current list                         |
+| `⌘1` / `⌘2` / `⌘3` | Mine / Review requested / Assigned              |
+| `⌘F`               | Cycle search field: all / repo / title / author |
+| `⌘T`               | Cycle match type: fuzzy / substring / exact     |
+| `Enter`            | Open the selected PR in your default browser    |
+| `⌘⇧C`              | Copy PR URL                                     |
+| `⌘⇧N`              | Copy PR number                                  |
+| `⌘R`               | Fetch fresh data                                |
+| `⌘K`               | Open actions, search options, and setup help    |
 
 The dropdown also switches lists. Searches ignore case. Fuzzy search matches characters in order (`ghas` matches `gh-assigned`) and preserves stack order rather than ranking results. Exact search compares the whole selected field and is unavailable for `all`. Repository search uses the short name, without the owner.
 
@@ -57,9 +56,10 @@ Browser opening uses Raycast's default browser action, not the CLI's `GH_BROWSER
 ## Check changes
 
 ```sh
-npm test
-npm run lint
-npm run build
+# From the workspace root
+pnpm --filter gh-assigned test
+pnpm --filter gh-assigned lint:raycast
+pnpm --filter gh-assigned build
 ```
 
-The build writes to `dist/`; `npm run dev` installs the command into Raycast. Tests cover the JSON contract, stack ordering, search modes, executable paths, and command failures without contacting GitHub.
+The build writes to `dist/`; `pnpm --filter gh-assigned dev` installs the command into Raycast. Tests cover the JSON contract, stack ordering, search modes, executable paths, and command failures without contacting GitHub.

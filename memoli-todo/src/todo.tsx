@@ -5,6 +5,7 @@ import {
   Color,
   Form,
   Icon,
+  Keyboard,
   List,
   Toast,
   confirmAlert,
@@ -13,11 +14,35 @@ import {
 } from "@raycast/api";
 import { useEffect, useRef, useState } from "react";
 import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { saveChange, tasksFrom, type Change, type Task } from "./store";
+import { dataPaths, initializeTodo } from "./data-files";
+import { SwitchCommandAction } from "./switch-command";
+import {
+  saveChange,
+  statuses,
+  tasksFrom,
+  type Change,
+  type Task,
+} from "./store";
 
-const path = join(homedir(), ".memoli/memo/todo.md");
+const statusIcons = {
+  todo: Icon.Circle,
+  inprogress: Icon.Clock,
+  pend: Icon.Pause,
+  done: Icon.CheckCircle,
+};
+const statusColors = {
+  todo: Color.SecondaryText,
+  inprogress: Color.Blue,
+  pend: "#C4B5FD",
+  done: Color.Green,
+};
+const triageColors = {
+  low: Color.SecondaryText,
+  mid: Color.Yellow,
+  high: "#67D4F5",
+};
+
+const path = dataPaths().todo;
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
@@ -62,7 +87,13 @@ function TaskForm({
                 pop();
             }}
           />
-          {titleFocused && <Action title="メモに移動" shortcut={{ modifiers: [], key: "return" }} onAction={() => noteRef.current?.focus()} />}
+          {titleFocused && (
+            <Action
+              title="メモに移動"
+              shortcut={{ modifiers: [], key: "return" }}
+              onAction={() => noteRef.current?.focus()}
+            />
+          )}
         </ActionPanel>
       }
     >
@@ -91,9 +122,18 @@ export default function Command() {
   const [failure, setFailure] = useState<string>();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string>();
+  const matches = (task: Task) =>
+    (filter === "all" || task.status === filter) &&
+    `${task.title}\n${task.note}`
+      .toLocaleLowerCase()
+      .includes(search.trim().toLocaleLowerCase());
+  const allTasks = tasksFrom(text ?? "");
+  const tasks = allTasks.filter(matches);
+  const doneCount = allTasks.filter((task) => task.status === "done").length;
   function refresh() {
     try {
-      setText(readFileSync(path, "utf8"));
+      setText(readFileSync(initializeTodo(), "utf8"));
       setFailure(undefined);
     } catch (error) {
       setText(undefined);
@@ -105,9 +145,32 @@ export default function Command() {
   }, []);
   async function mutate(change: Change, snapshot: string): Promise<boolean> {
     try {
-      saveChange(path, snapshot, change);
-      refresh();
-      await showToast({ style: Toast.Style.Success, title: "保存しました" });
+      const next = saveChange(path, snapshot, change);
+      const after = tasksFrom(next);
+      const index =
+        change.kind === "add"
+          ? after.length - 1
+          : change.kind === "delete-done"
+            ? 0
+            : tasksFrom(snapshot).findIndex(
+                (task) =>
+                  task.line ===
+                  (change.kind === "move"
+                    ? change.target.line
+                    : change.task.line),
+              );
+      const selected = after[Math.min(index, after.length - 1)];
+      setText(next);
+      setFailure(undefined);
+      setSelectedId(
+        selected && matches(selected) ? String(selected.line) : undefined,
+      );
+      if (
+        change.kind !== "move" &&
+        change.kind !== "triage" &&
+        change.kind !== "status"
+      )
+        await showToast({ style: Toast.Style.Success, title: "保存しました" });
       return true;
     } catch (error) {
       await showToast({
@@ -122,6 +185,10 @@ export default function Command() {
   function actions(task?: Task) {
     // Each form keeps the snapshot it was opened with, so external edits cannot be overwritten.
     const snapshot = text;
+    const statusIndex = task ? statuses.indexOf(task.status) : 0;
+    const index = task
+      ? tasks.findIndex((item) => item.line === task.line)
+      : -1;
     const save = (change: Change) =>
       snapshot === undefined
         ? Promise.resolve(false)
@@ -129,17 +196,93 @@ export default function Command() {
     return (
       <ActionPanel>
         {task && (
+          <ActionPanel.Submenu
+            autoFocus
+            title="状態を変更"
+            icon={statusIcons[task.status]}
+          >
+            {statuses.map((status) => (
+              <Action
+                key={status}
+                title={status}
+                icon={statusIcons[status]}
+                onAction={() => save({ kind: "status", task, status })}
+              />
+            ))}
+          </ActionPanel.Submenu>
+        )}
+        {task && (
           <Action
-            title={task.done ? "未完了に戻す" : "完了にする"}
+            title={task.status === "done" ? "未着手に戻す" : "完了にする"}
             icon={Icon.CheckCircle}
+            shortcut={{ modifiers: [], key: "return" }}
             onAction={() => save({ kind: "toggle", task })}
           />
+        )}
+        {task && (
+          <ActionPanel.Section>
+            <Action
+              title="前の状態に変更"
+              icon={Icon.ArrowLeft}
+              shortcut={{ modifiers: ["cmd"], key: "arrowLeft" }}
+              onAction={() =>
+                save({
+                  kind: "status",
+                  task,
+                  status: statuses[Math.max(0, statusIndex - 1)],
+                })
+              }
+            />
+            <Action
+              title="次の状態に変更"
+              icon={Icon.ArrowRight}
+              shortcut={{ modifiers: ["cmd"], key: "arrowRight" }}
+              onAction={() =>
+                save({
+                  kind: "status",
+                  task,
+                  status:
+                    statuses[Math.min(statuses.length - 1, statusIndex + 1)],
+                })
+              }
+            />
+            <Action
+              title="上に移動"
+              icon={Icon.ArrowUp}
+              shortcut={{ modifiers: ["shift"], key: "arrowUp" }}
+              onAction={() =>
+                tasks[index - 1] &&
+                save({ kind: "move", task, target: tasks[index - 1] })
+              }
+            />
+            <Action
+              title="下に移動"
+              icon={Icon.ArrowDown}
+              shortcut={{ modifiers: ["shift"], key: "arrowDown" }}
+              onAction={() =>
+                tasks[index + 1] &&
+                save({ kind: "move", task, target: tasks[index + 1] })
+              }
+            />
+            <Action
+              title="優先度を下げる"
+              icon={Icon.ArrowLeft}
+              shortcut={{ modifiers: ["shift"], key: "arrowLeft" }}
+              onAction={() => save({ kind: "triage", task, direction: -1 })}
+            />
+            <Action
+              title="優先度を上げる"
+              icon={Icon.ArrowRight}
+              shortcut={{ modifiers: ["shift"], key: "arrowRight" }}
+              onAction={() => save({ kind: "triage", task, direction: 1 })}
+            />
+          </ActionPanel.Section>
         )}
         {snapshot !== undefined && (
           <Action.Push
             title="タスクを追加"
             icon={Icon.Plus}
-            shortcut={{ modifiers: ["cmd"], key: "n" }}
+            shortcut={Keyboard.Shortcut.Common.New}
             target={<TaskForm initialTitle={search} onSave={save} />}
           />
         )}
@@ -147,20 +290,21 @@ export default function Command() {
           <Action.Push
             title="タスクを編集"
             icon={Icon.Pencil}
-            shortcut={{ modifiers: ["cmd"], key: "e" }}
+            shortcut={Keyboard.Shortcut.Common.Edit}
             target={<TaskForm task={task} onSave={save} />}
           />
         )}
         <Action
           title="再読み込み"
           icon={Icon.ArrowClockwise}
-          shortcut={{ modifiers: ["cmd"], key: "r" }}
+          shortcut={Keyboard.Shortcut.Common.Refresh}
           onAction={refresh}
         />
+        <SwitchCommandAction target="horizon" />
         <Action.Open
           title="Markdownファイルを開く"
           target={path}
-          shortcut={{ modifiers: ["cmd"], key: "o" }}
+          shortcut={Keyboard.Shortcut.Common.Open}
         />
         {task && (
           <Action
@@ -185,27 +329,51 @@ export default function Command() {
             }}
           />
         )}
+        {doneCount > 0 && (
+          <Action
+            title="Doneのタスクを一括削除"
+            icon={Icon.Trash}
+            style={Action.Style.Destructive}
+            onAction={async () => {
+              if (
+                await confirmAlert({
+                  title: `Doneのタスク${doneCount}件を削除しますか？`,
+                  message:
+                    "検索・statusの絞り込みに関係なく、すべてのDoneタスクとそのメモを削除します。",
+                  primaryAction: {
+                    title: "一括削除",
+                    style: Alert.ActionStyle.Destructive,
+                  },
+                })
+              )
+                await save({ kind: "delete-done" });
+            }}
+          />
+        )}
       </ActionPanel>
     );
   }
-  const tasks = tasksFrom(text ?? "").filter(
-    (task) => filter === "all" || task.done === (filter === "done"),
-  );
   return (
     <List
       isLoading={text === undefined && !failure}
+      navigationTitle="raytodo"
       searchBarPlaceholder="タスクを検索…（⌘Nで追加）"
+      searchText={search}
       onSearchTextChange={setSearch}
+      filtering={false}
+      selectedItemId={selectedId}
+      onSelectionChange={(id: string | null) => setSelectedId(id ?? undefined)}
       actions={actions()}
       searchBarAccessory={
         <List.Dropdown
-          tooltip="表示するタスク"
+          tooltip="表示するタスク（⌘P）"
           value={filter}
           onChange={setFilter}
         >
-          <List.Dropdown.Item title="未完了" value="todo" />
-          <List.Dropdown.Item title="完了" value="done" />
           <List.Dropdown.Item title="すべて" value="all" />
+          {statuses.map((status) => (
+            <List.Dropdown.Item key={status} title={status} value={status} />
+          ))}
         </List.Dropdown>
       }
     >
@@ -218,15 +386,16 @@ export default function Command() {
       {tasks.map((task) => (
         <List.Item
           key={task.line}
+          id={String(task.line)}
           title={task.title || "（空のタスク）"}
           subtitle={task.note.split("\n").find((line) => line.trim())}
-          keywords={task.note ? [task.note] : []}
-          icon={
-            task.done
-              ? { source: Icon.CheckCircle, tintColor: Color.Green }
-              : Icon.Circle
-          }
-          accessories={[{ text: task.done ? "完了" : "未完了" }]}
+          icon={{
+            source: statusIcons[task.status],
+            tintColor: statusColors[task.status],
+          }}
+          accessories={[
+            { tag: { value: task.triage, color: triageColors[task.triage] } },
+          ]}
           actions={actions(task)}
         />
       ))}

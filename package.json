@@ -1,0 +1,20 @@
+{
+  "name": "personal-raycast-extensions",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "pnpm check:public && vp check && pnpm -r run typecheck",
+    "check:public": "node scripts/check-public-files.mjs",
+    "test": "vp test",
+    "fmt": "vp fmt",
+    "lint:raycast": "pnpm -r run lint:raycast",
+    "build": "pnpm -r run build"
+  },
+  "devDependencies": {
+    "vite-plus": "0.3.1"
+  },
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "packageManager": "pnpm@11.18.0"
+}

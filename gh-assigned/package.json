@@ -1,43 +1,20 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "gh-assigned",
-  "title": "GH Assigned",
+  "private": true,
   "description": "Find your open, review-requested, and assigned GitHub pull requests using gh-assigned.",
-  "icon": "extension-icon.png",
-  "author": "fujitanisora0414",
-  "platforms": [
-    "macOS"
-  ],
   "categories": [
     "Developer Tools"
   ],
   "license": "MIT",
-  "private": true,
+  "author": "fujitanisora0414",
   "type": "module",
-  "commands": [
-    {
-      "name": "assigned",
-      "title": "Search Pull Requests",
-      "subtitle": "GH Assigned",
-      "description": "Search your pull requests, see CI and reviews, and open or copy them.",
-      "mode": "view"
-    }
-  ],
-  "preferences": [
-    {
-      "name": "ghPath",
-      "title": "GitHub CLI Path",
-      "description": "Optional absolute path to gh. Leave empty to use PATH, Homebrew, or your user Nix profile. Run gh auth login and install gh-assigned in Terminal first.",
-      "type": "textfield",
-      "required": false,
-      "placeholder": "/opt/homebrew/bin/gh"
-    }
-  ],
   "scripts": {
     "build": "ray build -e dist -o dist",
     "dev": "ray develop",
-    "lint": "ray lint",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "lint:raycast": "ray lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vp test --root .. gh-assigned/tests"
   },
   "dependencies": {
     "@raycast/api": "^2.3.1",
@@ -51,7 +28,31 @@
     "prettier": "^3.8.1",
     "typescript": "^5.9.3"
   },
+  "icon": "extension-icon.png",
   "engines": {
     "node": ">=22.22.2"
-  }
+  },
+  "commands": [
+    {
+      "name": "assigned",
+      "title": "Search Pull Requests",
+      "subtitle": "GH Assigned",
+      "description": "Search your pull requests, see CI and reviews, and open or copy them.",
+      "mode": "view"
+    }
+  ],
+  "platforms": [
+    "macOS"
+  ],
+  "preferences": [
+    {
+      "name": "ghPath",
+      "title": "GitHub CLI Path",
+      "description": "Optional absolute path to gh. Leave empty to use PATH, Homebrew, or your user Nix profile. Run gh auth login and install gh-assigned in Terminal first.",
+      "type": "textfield",
+      "required": false,
+      "placeholder": "/opt/homebrew/bin/gh"
+    }
+  ],
+  "title": "GH Assigned"
 }

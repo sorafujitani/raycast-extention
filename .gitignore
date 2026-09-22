@@ -1,3 +1,33 @@
+# Deny new top-level files/directories unless explicitly allowed below.
+/*
+
+# Public workspace configuration and documentation.
+!/.gitignore
+!/README.md
+!/package.json
+!/pnpm-workspace.yaml
+!/pnpm-lock.yaml
+!/tsconfig.json
+!/vite.config.ts
+
+# Public extensions (the allowlist).
+!/memoli-todo/
+!/gh-assigned/
+!/ray-dsl-viewer/
+
+# Publication safeguards: allow only these support files.
+!/.githooks/
+/.githooks/*
+!/.githooks/pre-commit
+!/.githooks/pre-push
+!/scripts/
+/scripts/*
+!/scripts/check-public-files.mjs
+!/scripts/tests/
+/scripts/tests/*
+!/scripts/tests/public-files.test.mjs
+
+# Never publish generated files or local credentials, even in public tools.
 node_modules/
 dist/
 .DS_Store

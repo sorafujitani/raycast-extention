@@ -1,0 +1,14 @@
+# Public extensions only. Keep company tools in local/ with their own lockfiles.
+packages:
+  - memoli-todo
+  - gh-assigned
+  - ray-dsl-viewer
+
+allowBuilds:
+  esbuild: true
+
+# Vite+ bundles Vite under its own release version.
+peerDependencyRules:
+  allowedVersions:
+    "@vitest/mocker>vite": "0.3.1"
+    "vitest>vite": "0.3.1"

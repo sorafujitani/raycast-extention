@@ -215,7 +215,7 @@ export default function Command() {
     if (!hasContent) return;
 
     if (isTypeMismatch) {
-      showToast({
+      void showToast({
         style: Toast.Style.Animated,
         title: `Rendering as ${formatTypeLabel(contentType)}`,
         message: `Content looks like ${formatTypeLabel(detectedType)}`,

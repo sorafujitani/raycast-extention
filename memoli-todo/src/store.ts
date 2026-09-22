@@ -1,15 +1,44 @@
-import {
-  readFileSync,
-  writeFileSync,
-  renameSync,
-  unlinkSync,
-  openSync,
-  closeSync,
-  statSync,
-} from "node:fs";
+import { saveSnapshot } from "./data-files";
 
-export type Task = { line: number; title: string; done: boolean; note: string };
-const checkbox = /^(\s*(?:[-+*]|\d+[.)])\s+\[)([ xX])(\]\s+)(.*)$/;
+export const statuses = ["todo", "inprogress", "pend", "done"] as const;
+export type Status = (typeof statuses)[number];
+export const triages = ["low", "mid", "high"] as const;
+export type Triage = (typeof triages)[number];
+export type Task = {
+  line: number;
+  title: string;
+  status: Status;
+  triage: Triage;
+  note: string;
+};
+// Keep legacy term comments hidden and intact when editing existing tasks.
+const metadataTags =
+  /(?:[\t ]+<!-- (?:triage:(?:low|mid|high)|term:(?:daily|week|month|future)) -->)+$/;
+function titleFrom(raw: string) {
+  const tag = raw.match(metadataTags);
+  const suffix = tag?.[0] ?? "";
+  return {
+    title: tag ? raw.slice(0, tag.index) : raw,
+    triage: (suffix.match(/<!-- triage:(low|mid|high) -->/)?.[1] ??
+      "mid") as Triage,
+    suffix,
+  };
+}
+const markers: Record<Status, string> = {
+  todo: " ",
+  inprogress: "/",
+  pend: "-",
+  done: "x",
+};
+const checkbox = /^(\s*(?:[-+*]|\d+[.)])\s+\[)([ xX/-])(\]\s+)(.*)$/;
+const statusFrom = (marker: string): Status =>
+  marker === "/"
+    ? "inprogress"
+    : marker === "-"
+      ? "pend"
+      : marker.toLowerCase() === "x"
+        ? "done"
+        : "todo";
 
 function noteAt(lines: string[], line: number) {
   const prefix = (lines[line].match(/^[\t ]*/)?.[0] ?? "") + "  >";
@@ -42,8 +71,9 @@ export function tasksFrom(text: string): Task[] {
     if (match)
       tasks.push({
         line: index,
-        title: match[4],
-        done: match[2] !== " ",
+        title: titleFrom(match[4]).title,
+        triage: titleFrom(match[4]).triage,
+        status: statusFrom(match[2]),
         note: noteAt(lines, index).note,
       });
   });
@@ -53,11 +83,72 @@ export function tasksFrom(text: string): Task[] {
 export type Change =
   | { kind: "add"; title: string; note?: string }
   | { kind: "edit"; task: Task; title: string; note?: string }
-  | { kind: "toggle" | "delete"; task: Task };
+  | { kind: "delete-done" }
+  | { kind: "toggle" | "delete"; task: Task }
+  | { kind: "status"; task: Task; status: Status }
+  | { kind: "triage"; task: Task; direction: -1 | 1 }
+  | { kind: "move"; task: Task; target: Task };
+
+function swapTasks(text: string, task: Task, target: Task): string {
+  const lines = text.split(/\r?\n/);
+  const tasks = tasksFrom(text);
+  const currentTarget = tasks.find((item) => item.line === target.line);
+  if (
+    !currentTarget ||
+    currentTarget.title !== target.title ||
+    currentTarget.status !== target.status ||
+    currentTarget.triage !== target.triage ||
+    currentTarget.note !== target.note
+  )
+    throw new Error("移動先が変更されています。一覧を更新してください");
+  if (task.line === target.line) return text;
+  const [first, last] =
+    task.line < target.line ? [task, target] : [target, task];
+  const indent = (line: string) => line.match(/^[\t ]*/)?.[0] ?? "";
+  const prefix = indent(lines[first.line]);
+  const between = tasks.filter(
+    (item) => item.line >= first.line && item.line <= last.line,
+  );
+  const firstEnd = first.line + 1 + noteAt(lines, first.line).count;
+  const lastEnd = last.line + 1 + noteAt(lines, last.line).count;
+  // Do not detach children or move tasks across headings / unrelated Markdown.
+  for (let i = 0; i < between.length; i++) {
+    const item = between[i];
+    const end = item.line + 1 + noteAt(lines, item.line).count;
+    const next = between[i + 1]?.line ?? lastEnd;
+    if (
+      indent(lines[item.line]) !== prefix ||
+      lines.slice(end, next).some((line) => line.trim())
+    )
+      throw new Error("並べ替えは同じ階層の連続したTODO内で行ってください");
+  }
+  let following = lastEnd;
+  while (following < lines.length && !lines[following].trim()) following++;
+  if (
+    following < lines.length &&
+    indent(lines[following]).length > prefix.length
+  )
+    throw new Error("子項目があるTODOは並べ替えできません");
+  return [
+    ...lines.slice(0, first.line),
+    ...lines.slice(last.line, lastEnd),
+    ...lines.slice(firstEnd, last.line),
+    ...lines.slice(first.line, firstEnd),
+    ...lines.slice(lastEnd),
+  ].join(text.includes("\r\n") ? "\r\n" : "\n");
+}
 
 export function applyChange(text: string, change: Change): string {
   const newline = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.split(/\r?\n/);
+  if (change.kind === "delete-done") {
+    const done = tasksFrom(text).filter((task) => task.status === "done");
+    if (!done.length) return text;
+    for (const task of done.reverse()) {
+      lines.splice(task.line, 1 + noteAt(lines, task.line).count);
+    }
+    return lines.join(newline);
+  }
   let title = "";
   let note = "";
   if (change.kind === "add" || change.kind === "edit") {
@@ -67,7 +158,9 @@ export function applyChange(text: string, change: Change): string {
     if (note.includes("\u0000"))
       throw new Error("メモに使用できない文字が含まれています");
     title = change.title.trim();
-    if (!title || /[\r\n\u0000]/.test(title))
+    if (metadataTags.test(title))
+      throw new Error("タスク名の末尾に管理用のコメントは使えません");
+    if (!title || /[\r\n]/.test(title) || title.includes("\u0000"))
       throw new Error("タスクは空でない1行で入力してください");
   }
   if (change.kind === "add") {
@@ -89,13 +182,16 @@ export function applyChange(text: string, change: Change): string {
   const match = lines[change.task.line]?.match(checkbox);
   if (
     !match ||
-    match[4] !== change.task.title ||
-    (match[2] !== " ") !== change.task.done
+    titleFrom(match[4]).title !== change.task.title ||
+    titleFrom(match[4]).triage !== change.task.triage ||
+    statusFrom(match[2]) !== change.task.status
   )
     throw new Error("タスクが変更されています。一覧を更新してください");
   const existingNote = noteAt(lines, change.task.line);
   if (existingNote.note !== change.task.note)
     throw new Error("メモが変更されています。一覧を更新してください");
+  if (change.kind === "move")
+    return swapTasks(text, change.task, change.target);
   if (change.kind === "delete")
     lines.splice(change.task.line, 1 + existingNote.count);
   else {
@@ -108,11 +204,34 @@ export function applyChange(text: string, change: Change): string {
           : []),
       );
     }
-    lines[change.task.line] =
-      match[1] +
-      (change.kind === "toggle" ? (change.task.done ? " " : "x") : match[2]) +
-      match[3] +
-      (change.kind === "edit" ? title : match[4]);
+    let marker = match[2];
+    if (change.kind === "toggle")
+      marker = change.task.status === "done" ? " " : "x";
+    if (change.kind === "status") {
+      if (!statuses.includes(change.status))
+        throw new Error("不明なstatusです");
+      if (change.status === change.task.status) return text;
+      marker = markers[change.status];
+    }
+    let rawTitle =
+      change.kind === "edit" ? title + titleFrom(match[4]).suffix : match[4];
+    if (change.kind === "triage") {
+      const index = Math.max(
+        0,
+        Math.min(
+          triages.length - 1,
+          triages.indexOf(change.task.triage) + change.direction,
+        ),
+      );
+      const next = triages[index];
+      if (next === change.task.triage) return text;
+      const suffix = titleFrom(match[4]).suffix.replace(
+        /[\t ]+<!-- triage:(low|mid|high) -->/g,
+        "",
+      );
+      rawTitle = `${change.task.title}${suffix} <!-- triage:${next} -->`;
+    }
+    lines[change.task.line] = match[1] + marker + match[3] + rawTitle;
   }
   return lines.join(newline);
 }
@@ -121,34 +240,6 @@ export function saveChange(
   path: string,
   snapshot: string,
   change: Change,
-): void {
-  const lock = path + ".raycast.lock";
-  const fd = openSync(lock, "wx", 0o600);
-  const temp = path + `.raycast-${process.pid}.tmp`;
-  try {
-    const current = readFileSync(path, "utf8");
-    if (current !== snapshot)
-      throw new Error(
-        "ファイルが外部で変更されています。一覧を更新してやり直してください",
-      );
-    const next = applyChange(current, change);
-    writeFileSync(path + ".raycast.bak", current, { mode: 0o600 });
-    writeFileSync(temp, next, {
-      mode: statSync(path).mode & 0o777,
-      flag: "wx",
-    });
-    if (readFileSync(path, "utf8") !== current)
-      throw new Error(
-        "保存中にファイルが変更されました。再読み込みしてください",
-      );
-    renameSync(temp, path);
-  } finally {
-    try {
-      unlinkSync(temp);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
-    closeSync(fd);
-    unlinkSync(lock);
-  }
+): string {
+  return saveSnapshot(path, snapshot, applyChange(snapshot, change));
 }
