@@ -1,6 +1,6 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
-  "name": "memoli-todo",
+  "name": "raytodo",
   "description": "Manage daily tasks with raytodo and longer-term plans with rayteam",
   "categories": [
     "Productivity"
@@ -14,7 +14,7 @@
     "build": "ray build -e dist -o dist",
     "typecheck": "tsc --noEmit",
     "lint:raycast": "ray lint",
-    "test": "vp test --root .. memoli-todo/tests"
+    "test": "vp test --root .. raytodo/tests"
   },
   "dependencies": {
     "@raycast/api": "1.104.9"
@@ -30,13 +30,13 @@
   "icon": "icon.png",
   "commands": [
     {
-      "name": "todo",
+      "name": "raytodo",
       "title": "raytodo",
       "description": "Add, edit and complete tasks in todo.md",
       "mode": "view"
     },
     {
-      "name": "horizon",
+      "name": "rayteam",
       "title": "rayteam",
       "description": "Manage tasks for this week, month, year and someday",
       "keywords": [

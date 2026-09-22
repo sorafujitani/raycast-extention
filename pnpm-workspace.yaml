@@ -1,8 +1,11 @@
 # Public extensions only. Keep company tools in local/ with their own lockfiles.
 packages:
-  - memoli-todo
+  - raytodo
   - gh-assigned
   - ray-dsl-viewer
+
+# Always run postinstall, including when dependencies are already current.
+optimisticRepeatInstall: false
 
 allowBuilds:
   esbuild: true

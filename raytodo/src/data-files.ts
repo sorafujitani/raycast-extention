@@ -33,14 +33,7 @@ export function ensureDataFile(path: string, initial: () => string) {
 
 export function initializeTodo(home = homedir()) {
   const path = dataPaths(home).todo;
-  ensureDataFile(path, () => {
-    try {
-      return readFileSync(join(home, ".memoli", "memo", "todo.md"), "utf8");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      return "# raytodo\n";
-    }
-  });
+  ensureDataFile(path, () => "# raytodo\n");
   return path;
 }
 

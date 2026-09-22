@@ -1,5 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
-import { ensureDataFile, saveSnapshot } from "./data-files";
+import { saveSnapshot } from "./data-files";
 
 export const periods = ["week", "month", "year", "future"] as const;
 export type Period = (typeof periods)[number];
@@ -58,24 +57,6 @@ export function parsePlans(text: string | undefined): Plan[] {
     throw new Error("保存データの形式が不正です。データは上書きしていません。");
   }
   return plans;
-}
-
-export async function loadPlansFile(
-  path: string,
-  readLegacy: () => Promise<string | undefined>,
-): Promise<string> {
-  let text = readFileSync(path, "utf8");
-  const plans = parsePlans(text);
-  const marker = path + ".horizon-imported";
-  if (!existsSync(marker)) {
-    if (plans.length === 0) {
-      const legacy = parsePlans(await readLegacy());
-      if (legacy.length > 0)
-        text = saveSnapshot(path, text, JSON.stringify(legacy, null, 2) + "\n");
-    }
-    ensureDataFile(marker, () => "");
-  }
-  return text;
 }
 
 export function savePlanChange(

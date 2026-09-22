@@ -10,11 +10,11 @@ import {
 export function SwitchCommandAction({
   target,
 }: {
-  target: "todo" | "horizon";
+  target: "raytodo" | "rayteam";
 }) {
   return (
     <Action
-      title={`${target === "todo" ? "raytodo" : "rayteam"}に切り替え`}
+      title={`${target}に切り替え`}
       icon={Icon.ArrowRight}
       shortcut={{ modifiers: ["ctrl", "shift"], key: "t" }}
       onAction={async () => {

@@ -1,18 +1,11 @@
 import assert from "node:assert/strict";
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "vite-plus/test";
 import { initializePlans } from "../src/data-files.ts";
 import {
   applyPlanChange,
-  loadPlansFile,
   savePlanChange,
   parsePlans,
   periods,
@@ -27,19 +20,15 @@ const plan: Plan = {
   done: false,
 };
 
-test("legacy plans migrate once; edits persist with backup and stale writes are rejected", async () => {
+test("edits persist with backup and stale writes are rejected", () => {
   const home = mkdtempSync(join(tmpdir(), "rayteam-store-"));
   try {
     const path = initializePlans(home);
-    const legacy = JSON.stringify([plan]);
-    let reads = 0;
-    const readLegacy = async () => {
-      reads++;
-      return legacy;
-    };
-    const snapshot = await loadPlansFile(path, readLegacy);
+    const snapshot = savePlanChange(path, readFileSync(path, "utf8"), {
+      kind: "add",
+      plan,
+    });
     assert.deepEqual(parsePlans(snapshot), [plan]);
-    assert.equal(reads, 1);
     assert.equal(readFileSync(path + ".raycast.bak", "utf8"), "[]\n");
     const saved = savePlanChange(path, snapshot, {
       kind: "toggle",
@@ -58,34 +47,24 @@ test("legacy plans migrate once; edits persist with backup and stale writes are 
     );
     rmSync(path + ".raycast.lock");
     savePlanChange(path, saved, { kind: "delete", id: plan.id });
-    assert.deepEqual(parsePlans(await loadPlansFile(path, readLegacy)), []);
-    assert.equal(reads, 1);
+    assert.deepEqual(
+      parsePlans(readFileSync(initializePlans(home), "utf8")),
+      [],
+    );
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
 });
 
-test("failed migration and corrupt files are preserved; existing rayteam data wins", async () => {
+test("corrupt files are rejected and never overwritten", () => {
   const home = mkdtempSync(join(tmpdir(), "rayteam-invalid-"));
   try {
     const path = initializePlans(home);
-    await assert.rejects(loadPlansFile(path, async () => "broken"));
-    assert.equal(readFileSync(path, "utf8"), "[]\n");
-    assert.equal(existsSync(path + ".horizon-imported"), false);
     writeFileSync(path, "broken file");
-    await assert.rejects(
-      loadPlansFile(path, async () => JSON.stringify([plan])),
-    );
+    const snapshot = readFileSync(initializePlans(home), "utf8");
+    assert.throws(() => parsePlans(snapshot));
+    assert.throws(() => savePlanChange(path, snapshot, { kind: "add", plan }));
     assert.equal(readFileSync(path, "utf8"), "broken file");
-    const existing = JSON.stringify([{ ...plan, title: "new data" }]);
-    writeFileSync(path, existing);
-    assert.equal(
-      await loadPlansFile(path, async () => {
-        throw new Error("must not read legacy");
-      }),
-      existing,
-    );
-    assert.equal(readFileSync(path, "utf8"), existing);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

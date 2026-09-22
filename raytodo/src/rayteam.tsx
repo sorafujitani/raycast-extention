@@ -7,18 +7,17 @@ import {
   Icon,
   Keyboard,
   List,
-  LocalStorage,
   Toast,
   confirmAlert,
   showToast,
   useNavigation,
 } from "@raycast/api";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { useEffect, useRef, useState } from "react";
 import { dataPaths, initializePlans } from "./data-files";
 import { SwitchCommandAction } from "./switch-command";
 import {
-  loadPlansFile,
   savePlanChange,
   isPeriod,
   parsePlans,
@@ -30,7 +29,6 @@ import {
 } from "./plans-store";
 
 const path = dataPaths().plans;
-const storageKey = "horizon-todo-v1";
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
@@ -159,14 +157,12 @@ export default function Command() {
   const [snapshot, setSnapshot] = useState<string>();
   const busy = useRef(false);
 
-  async function refresh() {
+  function refresh() {
     if (busy.current) return;
     busy.current = true;
     setLoading(true);
     try {
-      const text = await loadPlansFile(initializePlans(), () =>
-        LocalStorage.getItem<string>(storageKey),
-      );
+      const text = readFileSync(initializePlans(), "utf8");
       setSnapshot(text);
       setPlans(parsePlans(text));
       setFailure(undefined);
@@ -180,7 +176,7 @@ export default function Command() {
     }
   }
   useEffect(() => {
-    void refresh();
+    refresh();
   }, []);
 
   async function save(change: PlanChange): Promise<boolean> {
@@ -292,7 +288,7 @@ export default function Command() {
           shortcut={Keyboard.Shortcut.Common.Refresh}
           onAction={refresh}
         />
-        <SwitchCommandAction target="todo" />
+        <SwitchCommandAction target="raytodo" />
         <Action.Open
           title="JSONファイルを開く"
           target={path}

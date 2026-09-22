@@ -3,6 +3,7 @@
 
 # Public workspace configuration and documentation.
 !/.gitignore
+!/.npmrc
 !/README.md
 !/package.json
 !/pnpm-workspace.yaml
@@ -11,7 +12,7 @@
 !/vite.config.ts
 
 # Public extensions (the allowlist).
-!/memoli-todo/
+!/raytodo/
 !/gh-assigned/
 !/ray-dsl-viewer/
 
@@ -29,6 +30,7 @@
 
 # Never publish generated files or local credentials, even in public tools.
 node_modules/
+package-lock.json
 dist/
 .DS_Store
 *.log

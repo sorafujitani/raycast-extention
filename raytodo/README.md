@@ -2,7 +2,7 @@
 
 Raycastで `raytodo` を検索すると、その日に取り組むタスクを管理できます。`rayteam` は期間別の計画を管理します。一覧画面で **Ctrl+Shift+T** を押すと、互いに切り替わります。タスクが空のときや読み込みに失敗したときも切り替えられます。
 
-保存先は `raytodo` が `~/.raytodo/todo.md`、`rayteam` が `~/.rayteam/plans.json` です。インストール時に作成し、初回起動時にも不足するファイルを作成します。再インストールしても既存ファイルは上書きしません。Memoliのインストールは不要です。
+保存先は `raytodo` が `~/.raytodo/todo.md`、`rayteam` が `~/.rayteam/plans.json` です。インストール時に作成し、初回起動時にも不足するファイルを作成します。再インストールしても既存ファイルは上書きしません。
 
 ## raytodo
 
@@ -88,28 +88,35 @@ Raycastで `rayteam` を起動すると、今後やることを期間別に管�
 
 データは `~/.rayteam/plans.json` に保存します。拡張をアンインストールしてもファイルは残ります。保存前の内容は `plans.json.raycast.bak` に1世代保存します。読み込みに失敗した場合や外部変更を検出した場合は上書きしません。競合したときは編集フォームから一覧に戻り、⌘Rで再読み込みしてください。外部エディタとの同時保存は避けてください。
 
-## 旧データの引き継ぎ
+## インストール・登録
 
-- **Memoli Todo**：新しい保存先がない場合だけ、`~/.memoli/memo/todo.md` をコピーします。コピー後は元ファイルを参照・更新しません。
-- **Horizon Todo**：rayteamの初回起動時、新しい保存先が空なら旧ローカルストレージからコピーします。既にrayteamのタスクがある場合は、そちらを優先します。
-
-どちらも旧データを削除しません。rayteamの移行済み印は `~/.rayteam/plans.json.horizon-imported` です。タスクをすべて削除しても旧データを再取り込みしないため、このファイルは残してください。旧データの読み込みに失敗した場合は移行を完了扱いにせず、再読み込み時に再試行します。
-
-## 開発・再登録
-
-Node.js 22.22.2以上、pnpm 11.18.0とRaycastが必要です。
+Node.js 22.22.2以上とRaycastが必要です。リポジトリのルートで、npmかpnpm 11.18.0のどちらかを使います。
 
 ```sh
 cd "$(ghq root)/github.com/sorafujitani/raycast-extention"
-pnpm install --frozen-lockfile
-pnpm --filter memoli-todo test
-pnpm --filter memoli-todo typecheck
-pnpm --filter memoli-todo build
-pnpm --filter memoli-todo dev
+pnpm --filter raytodo install --frozen-lockfile
+pnpm --filter raytodo typecheck
+pnpm --filter raytodo build
+pnpm --filter raytodo dev
 ```
 
-`pnpm --filter memoli-todo dev` でローカル登録できます。ビルド完了後はCtrl+Cで停止しても利用できます。Storeへの公開やGitリポジトリ作成は不要です。既存の登録・ホットキー・旧ストレージを引き継ぐため、拡張IDとディレクトリ名は `memoli-todo`、内部コマンドIDは `todo` / `horizon` を維持しています。
+npmを使う場合は次を実行します。
 
-インストール時のスクリプトを無効にしている場合も、各コマンドの初回起動で保存先を作成します。手動で作成する場合は `pnpm --filter memoli-todo run postinstall` を実行します。
+```sh
+npm install --workspace=raytodo --include-workspace-root
+npm run typecheck --workspace=raytodo
+npm run build --workspace=raytodo
+npm run dev --workspace=raytodo
+```
 
-テストは一時ディレクトリで保存先の作成・移行・タスク操作・バックアップ・競合時の保護を確認します。切り替えテストではRaycast APIの呼び出しを確認し、実際の画面操作は行いません。個人の保存データは変更しません。
+どちらもraytodo・rayteamを含む拡張と共通開発ツールをインストールします。他の自作拡張は対象外です。`~/.raytodo/todo.md` と `~/.rayteam/plans.json` を作成し、既存ファイルは上書きしません。
+
+`npm run dev --workspace=raytodo` または `pnpm --filter raytodo dev` でローカル登録できます。ビルド完了後はCtrl+Cで停止しても利用できます。拡張IDとディレクトリ名は `raytodo`、コマンドIDは `raytodo` / `rayteam` です。
+
+以前の拡張登録が残っている場合は、新しいコマンドで保存データを確認してからRaycast設定で以前の登録を削除してください。起動用ホットキーは新しいコマンドへ設定し直してください。一覧内の切り替えはCtrl+Shift+Tのままです。
+
+インストール時のスクリプトを無効にしている場合も、各コマンドの初回起動で保存先を作成します。手動作成には `npm run postinstall --workspace=raytodo` または `pnpm --filter raytodo run postinstall` を使います。
+
+テストは `npm run test --workspace=raytodo` または `pnpm --filter raytodo test` で実行できます。
+
+テストは一時ディレクトリで保存先の作成・タスク操作・バックアップ・競合時の保護を確認します。切り替えテストではRaycast APIの呼び出しを確認し、実際の画面操作は行いません。個人の保存データは変更しません。

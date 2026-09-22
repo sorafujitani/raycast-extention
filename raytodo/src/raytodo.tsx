@@ -300,7 +300,7 @@ export default function Command() {
           shortcut={Keyboard.Shortcut.Common.Refresh}
           onAction={refresh}
         />
-        <SwitchCommandAction target="horizon" />
+        <SwitchCommandAction target="rayteam" />
         <Action.Open
           title="Markdownファイルを開く"
           target={path}

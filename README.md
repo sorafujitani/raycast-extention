@@ -4,7 +4,7 @@
 
 | ディレクトリ     | コマンド             | 用途                                         |
 | ---------------- | -------------------- | -------------------------------------------- |
-| `memoli-todo`    | raytodo / rayteam    | 日々のTODO・期間別の計画を専用ファイルで管理 |
+| `raytodo`        | raytodo / rayteam    | 日々のTODO・期間別の計画を専用ファイルで管理 |
 | `gh-assigned`    | Search Pull Requests | 自分のPR・レビュー依頼・担当PRを検索         |
 | `ray-dsl-viewer` | DSL Viewer           | Markdown・Mermaidをプレビュー                |
 
@@ -22,7 +22,7 @@ pnpm dev
 
 `local/` はGit・共通テスト・共通lint/formatの対象外です。ツール自身の `pnpm-lock.yaml` も公開されません。ルートの `package.json`、`pnpm-workspace.yaml`、`pnpm-lock.yaml`、READMEには業務用の依存情報や社内情報を書かないでください。
 
-公開ツールを追加する場合は、内容を確認してから `.gitignore` の許可リストと `pnpm-workspace.yaml` の両方に追加します。
+公開ツールを追加する場合は、内容を確認してから `.gitignore` の許可リストへ追加します。`package.json` と `pnpm-workspace.yaml` のworkspace一覧にも追加してください。
 
 ### 誤公開チェック
 
@@ -42,23 +42,44 @@ git config --local core.hooksPath .githooks
 
 ## ローカルに登録
 
-macOS、Raycast、Node.js 22.22.2以上、pnpm 11.18.0が必要です。
-依存管理はpnpm workspaces、テストと共通の静的チェックはVite+を使います。Vite+は開発依存として入るため、グローバルの `vp` は不要です。
+macOS、Raycast、Node.js 22.22.2以上が必要です。npm、またはpnpm 11.18.0を使えます。
+使いたい拡張だけを指定してインストール・登録します。`raytodo` にはrayteamも含まれます。
 
 ```sh
 ghq get https://github.com/sorafujitani/raycast-extention.git
 cd "$(ghq root)/github.com/sorafujitani/raycast-extention"
-pnpm install --frozen-lockfile
-pnpm --filter memoli-todo dev
 ```
 
-`memoli-todo` を使いたい拡張名に置き換えてください。ビルド完了後はCtrl+Cで停止しても利用できます。
+npmの場合:
 
-raytodo / rayteamの保存先は `~/.raytodo/todo.md` と `~/.rayteam/plans.json` です。インストール時または初回起動時に自動作成します。Memoliは不要です。一覧画面のCtrl+Shift+Tで互いに切り替えられます。旧データの引き継ぎは [利用ガイド](memoli-todo/README.md) を参照してください。
+```sh
+npm install --workspace=raytodo --include-workspace-root
+npm run dev --workspace=raytodo
+```
 
-## 共通コマンド
+pnpmの場合:
 
-リポジトリのルートで実行します。
+```sh
+pnpm --filter raytodo install --frozen-lockfile
+pnpm --filter raytodo dev
+```
+
+`raytodo` は `gh-assigned` または `ray-dsl-viewer` に置き換えられます。installは選んだ拡張と共通開発ツールの依存を入れます。他の拡張は入りません。devは選んだ拡張だけをRaycastへ登録します。ビルド完了後はCtrl+Cで停止しても利用できます。
+
+保存ファイルを作るのは、`raytodo` を選んだ場合だけです。他の拡張を選んでも次のファイルは作りません。再実行しても既存データは上書きしません。
+
+- `~/.raytodo/todo.md`：日々のタスク
+- `~/.rayteam/plans.json`：期間別の計画
+
+`--ignore-scripts` を指定した場合は、初回起動時に作成します。手動作成は `npm run postinstall --workspace=raytodo` または `pnpm --filter raytodo run postinstall` で実行できます。
+
+一覧画面のCtrl+Shift+Tで互いに切り替えられます。操作の詳細は [利用ガイド](raytodo/README.md) を参照してください。
+
+## 開発用の全体チェック
+
+全拡張を開発・検証するときだけ、ルートで `npm install` または `pnpm install --frozen-lockfile` を実行します。対象指定のないinstallは全拡張の依存を入れます。
+
+テストと共通の静的チェックにはVite+を使います。開発依存として入るため、グローバルの `vp` は不要です。次のコマンドはルートで実行します。
 
 ```sh
 pnpm check         # 公開範囲チェック＋vp check＋各拡張のtsc
@@ -68,9 +89,11 @@ pnpm lint:raycast  # Raycastのmanifest・icon・専用lint検証
 pnpm build         # Raycast CLIで3拡張をdist/へビルド
 ```
 
-個別実行は `pnpm --filter memoli-todo test` などを使います。グローバルの `vp` がある場合は `vp test` / `vp check` も使えます。`vp build` はViteのビルドなので使わず、Raycast用の `pnpm build` または `vp run build` を使ってください。
+npmでは `npm run check`、`npm test`、`npm run build` などを使えます。個別実行は `npm run test --workspace=raytodo` または `pnpm --filter raytodo test` です。グローバルの `vp` がある場合は `vp test` / `vp check` も使えます。`vp build` はViteのビルドなので使わず、Raycast用の `pnpm build` または `vp run build` を使ってください。
 
-公開ツールのロックファイルはルートの `pnpm-lock.yaml` に統一しています。`npm install` や拡張ごとのロックファイルは使いません。拡張本体は引き続きRaycastが管理するNode.jsで動きます。
+同じ作業ディレクトリではnpmかpnpmのどちらかに統一してください。Gitで管理するロックファイルはルートの `pnpm-lock.yaml` です。npmが作る `package-lock.json` はローカル専用で、Git対象外です。
+
+npmは `.npmrc` の設定により、各拡張内にも依存パッケージを配置します。Raycast CLIが各拡張のTypeScriptコンパイラを探すため、この設定が必要です。拡張本体はRaycastが管理するNode.jsで動きます。
 
 GH Assignedは認証済みのGitHub CLIと `gh-assigned` が必要です。Ray DSL ViewerのMermaid描画は図の内容を外部サービスへ送信します。機密情報を含む図には使用しないでください。
 

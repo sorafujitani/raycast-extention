@@ -347,7 +347,7 @@ test("checklist CRUD preserves prose, formatting, and rejects stale writes", () 
   assert.throws(() =>
     applyChange("```\ncode", { kind: "add", title: "hidden" }),
   );
-  const dir = mkdtempSync(join(tmpdir(), "memoli-todo-test-"));
+  const dir = mkdtempSync(join(tmpdir(), "raytodo-test-"));
   const file = join(dir, "todo.md");
   try {
     writeFileSync(file, original);

@@ -17,13 +17,20 @@ gh assigned --json
 Skip login or extension installation if already configured. From this repository:
 
 ```sh
-pnpm install --frozen-lockfile
+pnpm --filter gh-assigned install --frozen-lockfile
 pnpm --filter gh-assigned dev
 ```
 
-Once the build is ready, launch **Search Pull Requests** under **GH Assigned** in Raycast. You can stop the development watcher with `ctrl-c`; the locally installed command remains available. Run `pnpm install --frozen-lockfile` and `pnpm --filter gh-assigned dev` from the workspace root again after updating the source.
+Or use npm to install and register only this extension:
 
-Alternatively, use Raycast's **Import Extension** command and select this `gh-assigned/` directory after `pnpm install --frozen-lockfile`.
+```sh
+npm install --workspace=gh-assigned --include-workspace-root
+npm run dev --workspace=gh-assigned
+```
+
+Once the build is ready, launch **Search Pull Requests** under **GH Assigned** in Raycast. You can stop the development watcher with `ctrl-c`; the locally installed command remains available. Run `pnpm --filter gh-assigned install --frozen-lockfile` and `pnpm --filter gh-assigned dev` from the workspace root again after updating the source.
+
+Alternatively, use Raycast's **Import Extension** command and select this `gh-assigned/` directory after `pnpm --filter gh-assigned install --frozen-lockfile`.
 
 ## Controls
 

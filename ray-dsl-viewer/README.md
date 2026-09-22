@@ -6,9 +6,18 @@ Raycastの **DSL Viewer** でMarkdown・Mermaidを入力してプレビューし
 
 ```sh
 # リポジトリのルートで実行
-pnpm install --frozen-lockfile
+pnpm --filter ray-dsl-viewer install --frozen-lockfile
 pnpm --filter ray-dsl-viewer dev
 ```
+
+npmの場合:
+
+```sh
+npm install --workspace=ray-dsl-viewer --include-workspace-root
+npm run dev --workspace=ray-dsl-viewer
+```
+
+どちらもこの拡張と共通開発ツールを対象とし、他の拡張やraytodoの保存ファイルは追加しません。
 
 検証:
 

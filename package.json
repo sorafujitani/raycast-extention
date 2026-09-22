@@ -1,14 +1,19 @@
 {
   "name": "personal-raycast-extensions",
   "private": true,
+  "workspaces": [
+    "raytodo",
+    "gh-assigned",
+    "ray-dsl-viewer"
+  ],
   "type": "module",
   "scripts": {
-    "check": "pnpm check:public && vp check && pnpm -r run typecheck",
+    "check": "npm run check:public && vp check && npm run typecheck --workspaces",
     "check:public": "node scripts/check-public-files.mjs",
     "test": "vp test",
     "fmt": "vp fmt",
-    "lint:raycast": "pnpm -r run lint:raycast",
-    "build": "pnpm -r run build"
+    "lint:raycast": "npm run lint:raycast --workspaces",
+    "build": "npm run build --workspaces"
   },
   "devDependencies": {
     "vite-plus": "0.3.1"

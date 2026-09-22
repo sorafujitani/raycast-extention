@@ -8,10 +8,11 @@ test("only public tools and named workspace files are allowed", () => {
   expect(
     blockedPaths([
       "README.md",
+      ".npmrc",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
-      "memoli-todo/src/todo.tsx",
+      "raytodo/src/raytodo.tsx",
       "gh-assigned/src/assigned.tsx",
       "ray-dsl-viewer/src/dsl-viewer.tsx",
       ".githooks/pre-commit",
@@ -27,11 +28,12 @@ test("only public tools and named workspace files are allowed", () => {
     "company notes.md",
     "private.json",
     ".env",
-    "memoli-todo/.env.local",
-    "memoli-todo/node_modules/pkg/index.js",
+    "raytodo/.env.local",
+    "raytodo/node_modules/pkg/index.js",
+    "raytodo/package-lock.json",
     "gh-assigned/dist/assigned.js",
     "ray-dsl-viewer/dev.log",
-    "memoli-todo/raycast-env.d.ts",
+    "raytodo/raycast-env.d.ts",
     "scripts/company-script.mjs",
     ".githooks/other-hook",
   ];

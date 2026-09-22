@@ -18,23 +18,20 @@ vi.mock("@raycast/api", () => ({
 }));
 
 test("both commands switch with the same keyboard shortcut and report launch failures", async () => {
-  for (const target of ["todo", "horizon"] as const) {
+  for (const target of ["raytodo", "rayteam"] as const) {
     const action = SwitchCommandAction({ target });
     assert.deepEqual(action.props.shortcut, {
       modifiers: ["ctrl", "shift"],
       key: "t",
     });
-    assert.equal(
-      action.props.title,
-      `${target === "todo" ? "raytodo" : "rayteam"}に切り替え`,
-    );
+    assert.equal(action.props.title, `${target}に切り替え`);
     await action.props.onAction();
     assert.deepEqual(vi.mocked(launchCommand).mock.lastCall, [
       { name: target, type: "userInitiated" },
     ]);
   }
   vi.mocked(launchCommand).mockRejectedValueOnce(new Error("unavailable"));
-  await SwitchCommandAction({ target: "todo" }).props.onAction();
+  await SwitchCommandAction({ target: "raytodo" }).props.onAction();
   assert.deepEqual(vi.mocked(showToast).mock.lastCall, [
     {
       style: "failure",
