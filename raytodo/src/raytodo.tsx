@@ -41,6 +41,11 @@ const triageColors = {
   mid: Color.Yellow,
   high: "#67D4F5",
 };
+const triageOrder: Record<Task["triage"], number> = {
+  high: 0,
+  mid: 1,
+  low: 2,
+};
 
 const path = dataPaths().todo;
 const message = (error: unknown) =>
@@ -122,6 +127,7 @@ export default function Command() {
   const [failure, setFailure] = useState<string>();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [sortByPriority, setSortByPriority] = useState(false);
   const [selectedId, setSelectedId] = useState<string>();
   const matches = (task: Task) =>
     (filter === "all" || task.status === filter) &&
@@ -129,7 +135,14 @@ export default function Command() {
       .toLocaleLowerCase()
       .includes(search.trim().toLocaleLowerCase());
   const allTasks = tasksFrom(text ?? "");
-  const tasks = allTasks.filter(matches);
+  const visibleTasks = allTasks.filter(matches);
+  const tasks = sortByPriority
+    ? [...visibleTasks].sort(
+        (left, right) =>
+          triageOrder[left.triage] - triageOrder[right.triage] ||
+          left.line - right.line,
+      )
+    : visibleTasks;
   const doneCount = allTasks.filter((task) => task.status === "done").length;
   function refresh() {
     try {
@@ -246,24 +259,28 @@ export default function Command() {
                 })
               }
             />
-            <Action
-              title="上に移動"
-              icon={Icon.ArrowUp}
-              shortcut={{ modifiers: ["shift"], key: "arrowUp" }}
-              onAction={() =>
-                tasks[index - 1] &&
-                save({ kind: "move", task, target: tasks[index - 1] })
-              }
-            />
-            <Action
-              title="下に移動"
-              icon={Icon.ArrowDown}
-              shortcut={{ modifiers: ["shift"], key: "arrowDown" }}
-              onAction={() =>
-                tasks[index + 1] &&
-                save({ kind: "move", task, target: tasks[index + 1] })
-              }
-            />
+            {(!sortByPriority || tasks[index - 1]?.triage === task.triage) && (
+              <Action
+                title="上に移動"
+                icon={Icon.ArrowUp}
+                shortcut={{ modifiers: ["shift"], key: "arrowUp" }}
+                onAction={() =>
+                  tasks[index - 1] &&
+                  save({ kind: "move", task, target: tasks[index - 1] })
+                }
+              />
+            )}
+            {(!sortByPriority || tasks[index + 1]?.triage === task.triage) && (
+              <Action
+                title="下に移動"
+                icon={Icon.ArrowDown}
+                shortcut={{ modifiers: ["shift"], key: "arrowDown" }}
+                onAction={() =>
+                  tasks[index + 1] &&
+                  save({ kind: "move", task, target: tasks[index + 1] })
+                }
+              />
+            )}
             <Action
               title="優先度を下げる"
               icon={Icon.ArrowLeft}
@@ -294,6 +311,12 @@ export default function Command() {
             target={<TaskForm task={task} onSave={save} />}
           />
         )}
+        <Action
+          title={sortByPriority ? "現在の順序で表示" : "優先度順で表示"}
+          icon={Icon.ChevronUpDown}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
+          onAction={() => setSortByPriority((current) => !current)}
+        />
         <Action
           title="再読み込み"
           icon={Icon.ArrowClockwise}
