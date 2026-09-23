@@ -4,6 +4,7 @@ export const statuses = ["todo", "inprogress", "pend", "done"] as const;
 export type Status = (typeof statuses)[number];
 export const triages = ["low", "mid", "high"] as const;
 export type Triage = (typeof triages)[number];
+const triageOrder: Record<Triage, number> = { high: 0, mid: 1, low: 2 };
 export type Task = {
   line: number;
   title: string;
@@ -87,7 +88,8 @@ export type Change =
   | { kind: "toggle" | "delete"; task: Task }
   | { kind: "status"; task: Task; status: Status }
   | { kind: "triage"; task: Task; direction: -1 | 1 }
-  | { kind: "move"; task: Task; target: Task };
+  | { kind: "move"; task: Task; target: Task }
+  | { kind: "sort-priority" };
 
 function swapTasks(text: string, task: Task, target: Task): string {
   const lines = text.split(/\r?\n/);
@@ -138,7 +140,27 @@ function swapTasks(text: string, task: Task, target: Task): string {
   ].join(text.includes("\r\n") ? "\r\n" : "\n");
 }
 
+function sortTasksByPriority(text: string): string {
+  let sorted = text;
+  let tasks = tasksFrom(sorted);
+  for (let pass = 0; pass < tasks.length - 1; pass++) {
+    let moved = false;
+    for (let index = 0; index < tasks.length - pass - 1; index++) {
+      if (
+        triageOrder[tasks[index].triage] <= triageOrder[tasks[index + 1].triage]
+      )
+        continue;
+      sorted = swapTasks(sorted, tasks[index], tasks[index + 1]);
+      tasks = tasksFrom(sorted);
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  return sorted;
+}
+
 export function applyChange(text: string, change: Change): string {
+  if (change.kind === "sort-priority") return sortTasksByPriority(text);
   const newline = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.split(/\r?\n/);
   if (change.kind === "delete-done") {

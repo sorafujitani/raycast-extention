@@ -41,7 +41,6 @@ const triageColors = {
   mid: Color.Yellow,
   high: "#67D4F5",
 };
-
 const path = dataPaths().todo;
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -150,7 +149,7 @@ export default function Command() {
       const index =
         change.kind === "add"
           ? after.length - 1
-          : change.kind === "delete-done"
+          : change.kind === "delete-done" || change.kind === "sort-priority"
             ? 0
             : tasksFrom(snapshot).findIndex(
                 (task) =>
@@ -292,6 +291,14 @@ export default function Command() {
             icon={Icon.Pencil}
             shortcut={Keyboard.Shortcut.Common.Edit}
             target={<TaskForm task={task} onSave={save} />}
+          />
+        )}
+        {snapshot !== undefined && (
+          <Action
+            title="優先度順に並べ替える"
+            icon={Icon.ChevronUpDown}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
+            onAction={() => save({ kind: "sort-priority" })}
           />
         )}
         <Action
