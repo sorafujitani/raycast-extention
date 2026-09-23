@@ -16,7 +16,7 @@ export function SwitchCommandAction({
     <Action
       title={`${target}に切り替え`}
       icon={Icon.ArrowRight}
-      shortcut={{ modifiers: ["ctrl", "shift"], key: "t" }}
+      shortcut={{ modifiers: ["ctrl", "shift"], key: "s" }}
       onAction={async () => {
         try {
           await launchCommand({ name: target, type: LaunchType.UserInitiated });

@@ -22,7 +22,7 @@ test("both commands switch with the same keyboard shortcut and report launch fai
     const action = SwitchCommandAction({ target });
     assert.deepEqual(action.props.shortcut, {
       modifiers: ["ctrl", "shift"],
-      key: "t",
+      key: "s",
     });
     assert.equal(action.props.title, `${target}に切り替え`);
     await action.props.onAction();
